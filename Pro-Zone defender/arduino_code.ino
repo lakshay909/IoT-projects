@@ -1,0 +1,258 @@
+#include "DHT.h"
+#include<Servo.h>
+#include "U8glib.h"
+U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);	
+
+Servo s1;
+#define DPIN 12        //Pin to connect DHT sensor (GPIO number) D2
+#define DTYPE DHT11   // Define DHT 11 or DHT22 sensor type
+DHT dht(DPIN,DTYPE);
+#define SENSOR_PIN 10
+int smokeA0 = A0;
+int data = 0;
+int sensorThres = 100;
+
+const int aqsensor = A1;
+
+#define humid_width 35
+#define humid_height 48
+
+static unsigned char humid_bits[] U8G_PROGMEM = {
+   0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x80,
+   0x0f, 0x00, 0x00, 0x00, 0xc0, 0x1f, 0x00, 0x00, 0x00, 0xe0, 0x1d, 0x00,
+   0x00, 0x00, 0xe0, 0x38, 0x00, 0x00, 0x00, 0xf0, 0x78, 0x00, 0x00, 0x00,
+   0x78, 0xf0, 0x00, 0x00, 0x00, 0x38, 0xe0, 0x00, 0x00, 0x00, 0x1c, 0xe0,
+   0x01, 0x00, 0x00, 0x1e, 0xc0, 0x03, 0x00, 0x00, 0x0f, 0x80, 0x03, 0x00,
+   0x00, 0x07, 0x00, 0x07, 0x00, 0x80, 0x07, 0x00, 0x0f, 0x00, 0xc0, 0x03,
+   0x00, 0x0e, 0x00, 0xc0, 0x01, 0x00, 0x1c, 0x00, 0xe0, 0x01, 0x00, 0x3c,
+   0x00, 0xe0, 0x00, 0x00, 0x38, 0x00, 0x70, 0x00, 0x00, 0x78, 0x00, 0x78,
+   0x00, 0x00, 0x70, 0x00, 0x38, 0x00, 0x00, 0xe0, 0x00, 0x38, 0x00, 0x00,
+   0xe0, 0x00, 0x1c, 0x00, 0x00, 0xc0, 0x01, 0x1c, 0x00, 0x00, 0xc0, 0x01,
+   0x0e, 0x00, 0x00, 0xc0, 0x03, 0x0e, 0x00, 0x00, 0x80, 0x03, 0x0e, 0x00,
+   0x00, 0x80, 0x03, 0x07, 0x00, 0x00, 0x00, 0x07, 0x07, 0x00, 0x00, 0x00,
+   0x07, 0x07, 0x00, 0x00, 0x00, 0x07, 0x07, 0x00, 0x00, 0x00, 0x07, 0x07,
+   0x00, 0x00, 0x00, 0x07, 0x07, 0x00, 0x00, 0x00, 0x07, 0x07, 0x00, 0x00,
+   0x00, 0x07, 0x07, 0x00, 0x00, 0x00, 0x07, 0x0e, 0x00, 0x00, 0x80, 0x03,
+   0x0e, 0x00, 0x00, 0x80, 0x03, 0x1e, 0x00, 0x00, 0xc0, 0x03, 0x1c, 0x00,
+   0x00, 0xc0, 0x01, 0x3c, 0x00, 0x00, 0xe0, 0x01, 0x78, 0x00, 0x00, 0xf0,
+   0x00, 0xf0, 0x00, 0x00, 0x78, 0x00, 0xe0, 0x01, 0x00, 0x3c, 0x00, 0xc0,
+   0x07, 0x00, 0x3f, 0x00, 0x80, 0x1f, 0xc0, 0x0f, 0x00, 0x00, 0xff, 0xff,
+   0x07, 0x00, 0x00, 0xfc, 0xff, 0x01, 0x00, 0x00, 0xc0, 0x3f, 0x00, 0x00 };
+
+
+#define temperature_width 18
+#define temperature_height 47
+static unsigned char temperature_bits[] U8G_PROGMEM = {
+   0xc0, 0x0f, 0x00, 0xe0, 0x1f, 0x00, 0x70, 0x38, 0x00, 0x30, 0x30, 0x00,
+   0x30, 0x30, 0x00, 0x30, 0x30, 0x00, 0x30, 0x30, 0x00, 0x30, 0x30, 0x00,
+   0x30, 0x30, 0x00, 0xb0, 0x37, 0x00, 0xb0, 0x37, 0x00, 0x30, 0x30, 0x00,
+   0xb0, 0x37, 0x00, 0xb0, 0x37, 0x00, 0x30, 0x30, 0x00, 0x30, 0x30, 0x00,
+   0xb0, 0x37, 0x00, 0xb0, 0x37, 0x00, 0x30, 0x30, 0x00, 0xb0, 0x37, 0x00,
+   0xb0, 0x37, 0x00, 0xb0, 0x37, 0x00, 0x30, 0x30, 0x00, 0xb0, 0x37, 0x00,
+   0xb0, 0x37, 0x00, 0xb0, 0x37, 0x00, 0xb0, 0x37, 0x00, 0xb0, 0x37, 0x00,
+   0xb0, 0x37, 0x00, 0xb0, 0x37, 0x00, 0x98, 0x67, 0x00, 0x8c, 0xc7, 0x00,
+   0xc6, 0x8f, 0x01, 0xe2, 0x1f, 0x01, 0xf3, 0x3f, 0x03, 0xf3, 0x3f, 0x03,
+   0xf3, 0x3f, 0x03, 0xf3, 0x3f, 0x03, 0xf3, 0x3f, 0x03, 0xf3, 0x3f, 0x03,
+   0xf3, 0x3f, 0x03, 0xe6, 0x9f, 0x01, 0xc6, 0x8f, 0x01, 0x0c, 0xc0, 0x00,
+   0x38, 0x70, 0x00, 0xf0, 0x3f, 0x00, 0xc0, 0x0f, 0x00 };
+
+void drawTemp(void) {
+
+  u8g.setFont(u8g_font_unifont);
+  u8g.setPrintPos(1, 10);
+  u8g.print("TEMPERATURE  1/5");
+
+  u8g.setFont(u8g_font_fub25);
+
+  u8g.setPrintPos(10, 50);
+
+  float temp = round(dht.readTemperature()*10)/10;
+  // Serial.println("Temp: ");
+  // Serial.println(temp);
+
+  u8g.print(String(round(dht.readTemperature()*10)/10) + " C");
+
+  // Celcius symbol
+  u8g.drawCircle(50, 23, 2);
+
+  // Thermometer icon
+  u8g.drawXBMP(100, 16, temperature_width, temperature_height, temperature_bits);
+  // Serial.print(temp);
+  // Serial.print(",");
+}
+void drawHumid(void) {
+
+
+  u8g.setFont(u8g_font_unifont);
+  u8g.setPrintPos(1, 10);
+  u8g.print("HUMIDITY     2/5");
+
+  u8g.setFont(u8g_font_fub25);
+  u8g.setPrintPos(10, 50);
+  u8g.print(String(int(dht.readHumidity())) + "%");
+
+  // Humidity icon
+  u8g.drawXBMP( 90, 16, humid_width, humid_height, humid_bits);
+  // Serial.print(int(dht.readHumidity()));
+  // Serial.print(",");
+}
+void drawAirQuality(void){
+  int ppm = analogRead(aqsensor);
+  u8g.setFont(u8g_font_unifont);
+  u8g.setPrintPos(1, 10);
+  u8g.print("AIR QUALITY 3/5");
+  u8g.setFont(u8g_font_unifont);
+  u8g.setPrintPos(10, 30);
+  u8g.print(String(int(analogRead(aqsensor))));
+  // Serial.println("Air Quality: ");
+  // Serial.print(ppm);
+  // Serial.print(",");
+}
+void drawGas(void){
+  int value = analogRead(smokeA0);
+  u8g.setFont(u8g_font_unifont);
+  u8g.setPrintPos(1, 10);
+  u8g.print("Gas     4/5");
+  u8g.setFont(u8g_font_unifont);
+  u8g.setPrintPos(10, 30);
+  u8g.print(String(int(analogRead(smokeA0))));
+  // Serial.println("Gas value: ");
+  // Serial.print(value);
+  // Serial.print(","); 
+}
+void drawMotion(void){
+  int value1 = digitalRead(SENSOR_PIN);
+  u8g.setFont(u8g_font_unifont);
+  u8g.setPrintPos(1, 10);
+  u8g.print("Motion   5/5");
+  if( value1 == 1){
+    u8g.setFont(u8g_font_unifont);
+    u8g.setPrintPos(10, 30);
+    u8g.print("Motion Detected!!");
+  }
+  else{
+    u8g.setFont(u8g_font_unifont);
+    u8g.setPrintPos(10, 30);
+    u8g.print("No Motion Detected!!");    
+  }
+  // Serial.println("Motion: ");
+  // Serial.print(value1); 
+  // Serial.println();
+}
+uint8_t draw_state = 0;
+
+void draw() {
+
+  switch(draw_state ) {
+    case 0: drawTemp(); break;
+    case 1: drawHumid(); break;
+    case 2: drawAirQuality(); break;
+    case 3: drawGas(); break;
+    case 4: drawMotion(); break;
+  }
+
+}
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(smokeA0, INPUT);
+  pinMode (aqsensor,INPUT);
+  pinMode(SENSOR_PIN, INPUT); 
+  pinMode(3, OUTPUT);
+  pinMode(11, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
+  pinMode(8, OUTPUT);
+  s1.attach(9);
+  dht.begin();
+}
+
+void loop() {
+  delay(1000);
+  
+  float tc = dht.readTemperature(false);  //Read temperature in C
+  float hu = dht.readHumidity();          //Read Humidity
+  int data = analogRead(smokeA0);
+  int ppm = analogRead(aqsensor);
+  int sensorValue = digitalRead(SENSOR_PIN);
+  digitalWrite(3,HIGH);
+  digitalWrite(4,HIGH);
+  digitalWrite(5,HIGH);
+  digitalWrite(6,HIGH);
+  digitalWrite(7,HIGH);
+  digitalWrite(8,LOW);
+  s1.write(0);
+  delay(500);
+  // s1.detach();
+  
+  if(tc < 50.00 && data >100 && hu < 50.00 && ppm <75){
+  digitalWrite(3,HIGH);
+  digitalWrite(4,HIGH);
+  digitalWrite(5,HIGH);
+  digitalWrite(6,HIGH);
+  digitalWrite(7,LOW);
+  digitalWrite(8,LOW);
+  // s1.attach(9);
+  // s1.write(0);
+  // s1.detach();    
+  }
+  if(tc < 50.00 && data >200 && hu < 50.00 && ppm > 100 ){
+  digitalWrite(3,HIGH);
+  digitalWrite(4,HIGH);
+  digitalWrite(5,HIGH);
+  digitalWrite(6,LOW);
+  digitalWrite(7,LOW);
+  digitalWrite(8,LOW);  
+  }
+  if(tc < 50.00 && data >300 && hu < 50.00 && ppm > 200){
+  digitalWrite(3,HIGH);
+  digitalWrite(4,HIGH);
+  digitalWrite(5,LOW);
+  digitalWrite(6,LOW);
+  digitalWrite(7,LOW);
+  digitalWrite(8,HIGH); 
+  // s1.attach(9);
+  s1.write(100);
+  delay(1500);
+  // s1.detach();   
+  }
+  if(tc < 50.00 && data >400 && hu < 50.00 && ppm > 300){
+  digitalWrite(3,HIGH);
+  digitalWrite(4,LOW);
+  digitalWrite(5,LOW);
+  digitalWrite(6,LOW);
+  digitalWrite(7,LOW);  
+  digitalWrite(8,HIGH);
+  // s1.attach(9);
+  s1.write(100);
+  delay(1500);
+  // s1.detach();  
+  }  
+  Serial.print(tc);
+  Serial.print(",");
+  Serial.print(hu);
+  Serial.print(",");
+  Serial.print(data);
+  Serial.print(",");
+  Serial.print(ppm);
+  Serial.print(",");
+  Serial.print(sensorValue);
+  Serial.println();
+
+  u8g.firstPage();
+  do {
+    draw();
+
+  } while( u8g.nextPage() );
+
+   // increase the state
+  draw_state++;
+
+  // Used if instead of mod operator to avoid running out of int size
+  if ( draw_state > 5  )
+    draw_state = 0;
+
+  // Switch draw_state after delay
+  // delay(1500);  
+}
